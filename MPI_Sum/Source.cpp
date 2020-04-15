@@ -13,6 +13,7 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &total);
     std::cout << "I am rank, " << rank << std::endl;
     if (rank == 0) {
+		// Заполняем вектор с данными
         srand(time(0));
         std::vector<int> values;
         for (int i = 0; i < 20; ++i) {
@@ -30,12 +31,15 @@ int main(int argc, char** argv) {
         int current_rank = 1;
         int flag = 1;
         do {
+			// Обрабатываем задачу для каждого потока
             for (int i = 1; i < total; ++i) {
+				// Если не осталось чисел для сложения в векторе 
                 if (current_pos == values.size())
                 {
                     values.clear();
                     break;
                 }
+				// Если осталось одно число для сложения в векторе
                 if (current_pos == values.size()-1)
                 {
                     answers.push_back(values[current_pos]);
@@ -43,6 +47,7 @@ int main(int argc, char** argv) {
                     current_pos = 0;
                     break;
                 }
+				// Если чисел больше одного, то пересылаем свободному потоку
                 int nums[2];
                 nums[0] = values[current_pos];
                 nums[1] = values[(size_t)current_pos + 1];
@@ -52,6 +57,7 @@ int main(int argc, char** argv) {
                 current_rank = i+1;
                 current_pos += 2;
             }
+			// Ожидаем данные от потоков
             for (int i = 1; i < current_rank; ++i)
             {
                 MPI_Status status;
@@ -60,12 +66,15 @@ int main(int argc, char** argv) {
                 std::cout << "Recieved from " << i << " number " << val << std::endl;
                 answers.push_back(val);
             }
+			// Если осталось всего 1 число, то получили ответ
             if (answers.size() == 1) {
                 std::cout << "Answer: " << answers[0] << std::endl;
                 break;
             }
+			// Если чисел больше
             else
             {
+				// Если чисел в векторе для сложения меньше 2ух, то просто очищаем вектор для сложения ( одно число уже перекинули ) и меняем местами вектора
                 if (values.size() == 0 || values.size() == 1)
                 {
                     std::cout << "Pack data and change to answers" << std::endl;
@@ -76,6 +85,7 @@ int main(int argc, char** argv) {
             }
         } while (true);
         flag = 0;
+		// Если получили ответ - подаём всем потокам сигнал о завершении работы
         for (int i = 1; i < total; ++i)
         {
             MPI_Send(&flag, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
@@ -87,6 +97,7 @@ int main(int argc, char** argv) {
         int have_value;
         MPI_Status status;
         while (true) {
+			// Если приходит 1 - есть данные, если приходит 0 - завершаем работу
             MPI_Recv(&have_value, 2, MPI_INT, 0, 1, MPI_COMM_WORLD, &status);
             if (!have_value)
                 break;
